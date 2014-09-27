@@ -14,8 +14,8 @@ The following are installed:-
 
     # Install git and clone TuxLite
     aptitude install git
-    git clone https://github.com/Mins/TuxLite.git
-    cd TuxLite
+    git clone https://github.com/jiceb/server-install.git
+    cd server-install
     
     # Edit options to enter server IP, MySQL password etc.
     nano options.conf
