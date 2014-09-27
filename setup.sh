@@ -1,3 +1,5 @@
+#!/bin/bash
+
 source ./options.conf
 
 # Detect distribution. Debian or Ubuntu
