@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Deroù by jiceb</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Deroù</h1>
+        <p>Nginx Setup for Ubuntu / Debian</p>
+
+        <p class="view"><a href="https://github.com/jiceb/derou">View the Project on GitHub <small>jiceb/derou</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/jiceb/derou/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/jiceb/derou/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/jiceb/derou">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p>Deroù is a free collection of shell scripts for rapid deployment of Nginx/PHP/MariaDB, based on the popular <a href="https://github.com/Mins/TuxLite">TuxLite</a>.</p>
+
+<p>The following are installed:-</p>
+
+<ul>
+<li>  Nginx</li>
+<li>  MariaDB</li>
+<li>  PHP-FPM + commonly used PHP modules</li>
+<li>  Postfix mail server (securely configured to be outgoing only)</li>
+<li>  Varnish cache (optional)</li>
+</ul><h3>
+<a name="quick-install-git" class="anchor" href="#quick-install-git"><span class="octicon octicon-link"></span></a>Quick Install (Git)</h3>
+
+<pre><code># Install git and clone Deroù
+aptitude install git
+git clone https://github.com/jiceb/derou.git
+cd derou
+
+# Edit options to enter server IP, MySQL password etc.
+nano options.conf
+
+# Make all scripts executable.
+chmod 700 *.sh
+chmod 700 options.conf
+
+# Install LAMP or LNMP stack.
+./install.sh
+
+# Add a new Linux user and add domains to the user.
+adduser johndoe
+./domain.sh add johndoe yourdomain.com
+./domain.sh add johndoe subdomain.yourdomain.com
+
+# Install Adminer or phpMyAdmin
+./setup.sh dbgui
+
+# Enable/disable public viewing of Adminer/phpMyAdmin
+./domain.sh dbgui on
+./domain.sh dbgui off
+</code></pre>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/jiceb">jiceb</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
