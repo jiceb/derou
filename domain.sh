@@ -34,9 +34,44 @@ function initialize_variables {
     DOMAINS_FOLDER="/home/$DOMAIN_OWNER/domains"
     DOMAIN_PATH="/home/$DOMAIN_OWNER/domains/$DOMAIN"
     GIT_PATH="/home/$DOMAIN_OWNER/repos/$DOMAIN.git"
+    
+    SSL_PATH="/home/$DOMAIN_OWNER/.ssl"
 
     DOMAIN_CONFIG_PATH="/etc/nginx/sites-available/$DOMAIN"
     DOMAIN_ENABLED_PATH="/etc/nginx/sites-enabled/$DOMAIN"
+    
+    # Generating self signed SSL certs
+    echo -e " "
+    echo -e "\033[35;1m Generating self signed SSL cert... \033[0m"
+
+    if [ ! -d "$SSL_PATH" ]; then
+        mkdir $SSL_PATH
+    fi
+
+    aptitude -y install expect
+
+    GENERATE_CERT=$(expect -c "
+        set timeout 10
+        spawn openssl req -new -x509 -days 3650 -nodes -out $SSL_PATH/$DOMAIN.pem -keyout $SSL_PATH/$DOMAIN.key
+        expect \"Country Name (2 letter code) \[AU\]:\"
+        send \"\r\"
+        expect \"State or Province Name (full name) \[Some-State\]:\"
+        send \"\r\"
+        expect \"Locality Name (eg, city) \[\]:\"
+        send \"\r\"
+        expect \"Organization Name (eg, company) \[Internet Widgits Pty Ltd\]:\"
+        send \"\r\"
+        expect \"Organizational Unit Name (eg, section) \[\]:\"
+        send \"\r\"
+        expect \"Common Name (eg, YOUR name) \[\]:\"
+        send \"\r\"
+        expect \"Email Address \[\]:\"
+        send \"\r\"
+        expect eof
+    ")
+
+    echo "$GENERATE_CERT"
+    aptitude -y purge expect
 
     # Awstats command to be placed in logrotate file
     if [ $AWSTATS_ENABLE = 'yes' ]; then
@@ -183,8 +218,8 @@ server {
         error_page 404 /404.html;
 
         ssl on;
-        ssl_certificate /etc/ssl/localcerts/webserver.pem;
-        ssl_certificate_key /etc/ssl/localcerts/webserver.key;
+        ssl_certificate $SSL_PATH/$DOMAIN.pem;
+        ssl_certificate_key $SSL_PATH/$DOMAIN.key;
 
         ssl_session_timeout 5m;
 
