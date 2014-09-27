@@ -1,4 +1,4 @@
-server-install is a free collection of shell scripts for rapid deployment of Nginx/PHP/MariaDB, based on the popular [TuxLite](https://github.com/Mins/TuxLite).
+Deroù is a free collection of shell scripts for rapid deployment of Nginx/PHP/MariaDB, based on the popular [TuxLite](https://github.com/Mins/TuxLite).
 
 
 The following are installed:-
@@ -12,10 +12,10 @@ The following are installed:-
 
 ### Quick Install (Git)
 
-    # Install git and clone TuxLite
+    # Install git and clone Deroù
     aptitude install git
-    git clone https://github.com/jiceb/server-install.git
-    cd server-install
+    git clone https://github.com/jiceb/derou.git
+    cd derou
     
     # Edit options to enter server IP, MySQL password etc.
     nano options.conf
