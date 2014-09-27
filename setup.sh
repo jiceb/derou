@@ -1,10 +1,3 @@
-###############################################################################################
-# TuxLite - Complete LNMP/LAMP setup script for Debian/Ubuntu                                 #
-# Nginx/Apache + PHP5-FPM + MySQL                                                             #
-# Stack is optimized/tuned for a 256MB server                                                 #
-# Email your questions to s@tuxlite.com                                                       #
-###############################################################################################
-
 source ./options.conf
 
 # Detect distribution. Debian or Ubuntu
@@ -118,18 +111,16 @@ EOF
     fi # End if DISTRO = Debian && RELEASE = squeeze
 
 
-    # If user wants to install nginx from official repo and webserver=nginx
-    if  [ $USE_NGINX_ORG_REPO = "yes" ] && [ $WEBSERVER = 1 ]; then
-        echo -e "\033[35;1mEnabling nginx.org repo for Debian $RELEASE. \033[0m"
-        cat > /etc/apt/sources.list.d/nginx.list <<EOF
+    echo -e "\033[35;1mEnabling nginx.org repo for Debian $RELEASE. \033[0m"
+    cat > /etc/apt/sources.list.d/nginx.list <<EOF
 # Official Nginx.org repository
 deb http://nginx.org/packages/`echo $DISTRO | tr '[:upper:]' '[:lower:]'`/ $RELEASE nginx
 deb-src http://nginx.org/packages/`echo $DISTRO | tr '[:upper:]' '[:lower:]'`/ $RELEASE nginx
 
 EOF
 
-        # Set APT pinning for Nginx package
-        cat > /etc/apt/preferences.d/Nginx <<EOF
+    # Set APT pinning for Nginx package
+    cat > /etc/apt/preferences.d/Nginx <<EOF
 # Prevent potential conflict with main repo/dotdeb 
 # Always install from official nginx.org repo
 Package: nginx
@@ -137,23 +128,20 @@ Pin: origin nginx.org
 Pin-Priority: 1000
 
 EOF
-        wget http://nginx.org/packages/keys/nginx_signing.key
-        cat nginx_signing.key | apt-key add -
-    fi # End if USE_NGINX_ORG_REPO = yes && WEBSERVER = 1
+    wget http://nginx.org/packages/keys/nginx_signing.key
+    cat nginx_signing.key | apt-key add -
 
 
-    # If user wants to install MariaDB instead of MySQL
-    if [ $INSTALL_MARIADB = 'yes' ]; then
-        echo -e "\033[35;1mEnabling MariaDB.org repo for $DISTRO $RELEASE. \033[0m"
-        cat > /etc/apt/sources.list.d/MariaDB.list <<EOF
+    echo -e "\033[35;1mEnabling MariaDB.org repo for $DISTRO $RELEASE. \033[0m"
+    cat > /etc/apt/sources.list.d/MariaDB.list <<EOF
 # http://mariadb.org/mariadb/repositories/
 deb $MARIADB_REPO`echo $DISTRO | tr [:upper:] [:lower:]` $RELEASE main
 deb-src $MARIADB_REPO`echo $DISTRO | tr [:upper:] [:lower:]` $RELEASE main
 
 EOF
 
-        # Set APT pinning for MariaDB packages
-        cat > /etc/apt/preferences.d/MariaDB <<EOF
+    # Set APT pinning for MariaDB packages
+    cat > /etc/apt/preferences.d/MariaDB <<EOF
 # Prevent potential conflict with main repo that causes
 # MariaDB to be uninstalled when upgrading mysql-common
 Package: *
@@ -162,9 +150,8 @@ Pin-Priority: 1000
 
 EOF
 
-        # Import MariaDB signing key
-        apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
-    fi # End if INSTALL_MARIADB = yes
+    # Import MariaDB signing key
+    apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
 
     aptitude update
     echo -e "\033[35;1m Successfully configured /etc/apt/sources.list \033[0m"
@@ -174,42 +161,22 @@ EOF
 
 function install_webserver {
 
-    # From options.conf, nginx = 1, apache = 2
-    if [ $WEBSERVER = 1 ]; then
-        aptitude -y install nginx
+	aptitude -y install nginx
+	
+	mkdir /etc/nginx/sites-available
+	mkdir /etc/nginx/sites-enabled
+	
+	# Disable vhost that isn't in the sites-available folder. Put a hash in front of any line.
+	sed -i 's/^[^#]/#&/' /etc/nginx/conf.d/default.conf
+	
+	# Enable default vhost in /etc/nginx/sites-available
+	ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
-        if  [ $USE_NGINX_ORG_REPO = "yes" ]; then
-            mkdir /etc/nginx/sites-available
-            mkdir /etc/nginx/sites-enabled
-
-           # Disable vhost that isn't in the sites-available folder. Put a hash in front of any line.
-           sed -i 's/^[^#]/#&/' /etc/nginx/conf.d/default.conf
-
-           # Enable default vhost in /etc/nginx/sites-available
-           ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
-        fi
-
-        # Add a catch-all default vhost
-        cat ./config/nginx_default_vhost.conf > /etc/nginx/sites-available/default
-
-        # Change default vhost root directory to /usr/share/nginx/html;
-        sed -i 's/\(root \/usr\/share\/nginx\/\).*/\1html;/' /etc/nginx/sites-available/default
-    else
-        aptitude -y install libapache2-mod-fastcgi apache2-mpm-event
-
-        a2dismod php4
-        a2dismod php5
-        a2dismod fcgid
-        a2enmod actions
-        a2enmod fastcgi
-        a2enmod ssl
-        a2enmod rewrite
-
-        cat ./config/fastcgi.conf > /etc/apache2/mods-available/fastcgi.conf
-
-        # Create the virtual directory for the external server
-        mkdir -p /srv/www/fcgi-bin.d
-    fi
+	# Add a catch-all default vhost
+	cat ./config/nginx_default_vhost.conf > /etc/nginx/sites-available/default
+	
+	# Change default vhost root directory to /usr/share/nginx/html;
+	sed -i 's/\(root \/usr\/share\/nginx\/\).*/\1html;/' /etc/nginx/sites-available/default
 
 } # End function install_webserver
 
@@ -240,12 +207,8 @@ function install_mysql {
     echo "mysql-server mysql-server/root_password password $MYSQL_ROOT_PASSWORD" | debconf-set-selections
     echo "mysql-server mysql-server/root_password_again password $MYSQL_ROOT_PASSWORD" | debconf-set-selections
 
-    if [ $INSTALL_MARIADB = 'yes' ]; then
-        aptitude -y install mariadb-server mariadb-client
-    else
-        aptitude -y install mysql-server mysql-client
-    fi
-
+    aptitude -y install mariadb-server mariadb-client
+    
     echo -e "\033[35;1m Securing MySQL... \033[0m"
     sleep 5
 
@@ -277,35 +240,16 @@ function install_mysql {
 
 function optimize_stack {
 
-    # If using Nginx, copy over nginx.conf
-    if [ $WEBSERVER = 1 ]; then
-        cat ./config/nginx.conf > /etc/nginx/nginx.conf
+    cat ./config/nginx.conf > /etc/nginx/nginx.conf
 
-        # Change nginx user from  "www-data" to "nginx". Not really necessary
-        # because "www-data" user is created when installing PHP5-FPM
-        if  [ $USE_NGINX_ORG_REPO = "yes" ]; then
-            sed -i 's/^user\s*www-data/user nginx/' /etc/nginx/nginx.conf
-        fi
+    # Change nginx user from  "www-data" to "nginx". Not really necessary
+    # because "www-data" user is created when installing PHP5-FPM
+    sed -i 's/^user\s*www-data/user nginx/' /etc/nginx/nginx.conf
 
-        # Change logrotate for nginx log files to keep 10 days worth of logs
-        nginx_file=`find /etc/logrotate.d/ -maxdepth 1 -name "nginx*"`
-        sed -i 's/\trotate .*/\trotate 10/' $nginx_file
+    # Change logrotate for nginx log files to keep 10 days worth of logs
+    nginx_file=`find /etc/logrotate.d/ -maxdepth 1 -name "nginx*"`
+    sed -i 's/\trotate .*/\trotate 10/' $nginx_file
 
-    # If using Apache, copy over apache2.conf
-    else
-        cat ./config/apache2.conf > /etc/apache2/apache2.conf
-
-        # Change logrotate for Apache2 log files to keep 10 days worth of logs
-        sed -i 's/\tweekly/\tdaily/' /etc/logrotate.d/apache2
-        sed -i 's/\trotate .*/\trotate 10/' /etc/logrotate.d/apache2
-
-        # Remove Apache server information from headers.
-        sed -i 's/ServerTokens .*/ServerTokens Prod/' /etc/apache2/conf.d/security
-        sed -i 's/ServerSignature .*/ServerSignature Off/' /etc/apache2/conf.d/security
-
-        # Add *:443 to ports.conf
-        cat ./config/apache2_ports.conf > /etc/apache2/ports.conf
-    fi
 
     if [ $AWSTATS_ENABLE = 'yes' ]; then
         # Configure AWStats
@@ -546,12 +490,7 @@ function secure_tmp_dd {
 
 function restart_webserver {
 
-    # From options.conf, nginx = 1, apache = 2
-    if [ $WEBSERVER = 1 ]; then
-        service nginx restart
-    else
-        apache2ctl graceful
-    fi
+    service nginx restart
 
 } # End function restart_webserver
 
@@ -577,7 +516,7 @@ if [ ! -n "$1" ]; then
 
     echo -n "$0"
     echo -ne "\033[36m install\033[0m"
-    echo     " - Installs LNMP or LAMP stack. Also installs Postfix MTA."
+    echo     " - Installs LNMP stack. Also installs Postfix MTA."
 
     echo -n "$0"
     echo -ne "\033[36m optimize\033[0m"
