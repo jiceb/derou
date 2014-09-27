@@ -1,10 +1,4 @@
 #!/bin/bash
-######################################################################
-# TuxLite virtualhost script                                         #
-# Easily add/remove domains or subdomains                            #
-# Configures logrotate, AWStats and PHP5-FPM                         #
-# Enables/disables public viewing of AWStats and Adminer/phpMyAdmin  #
-######################################################################
 
 source ./options.conf
 
@@ -25,16 +19,11 @@ fi
 
 
 # Logrotate Postrotate for Nginx
-# From options.conf, nginx = 1, apache = 2
-if [ $WEBSERVER -eq 1 ]; then
-    POSTROTATE_CMD='[ ! -f /var/run/nginx.pid ] || kill -USR1 `cat /var/run/nginx.pid`'
-else
-    POSTROTATE_CMD='/etc/init.d/apache2 reload > /dev/null'
-fi
+POSTROTATE_CMD='[ ! -f /var/run/nginx.pid ] || kill -USR1 `cat /var/run/nginx.pid`'
 
 # Variables for AWStats/Adminer|phpMyAdmin functions
 # The path to find for Adminer|phpMyAdmin and Awstats symbolic links
-PUBLIC_HTML_PATH="/home/*/domains/*/public_html"
+PUBLIC_HTML_PATH="/home/*/domains/*/public_html/web"
 VHOST_PATH="/home/*/domains/*"
 
 #### Functions Begin ####
@@ -46,14 +35,8 @@ function initialize_variables {
     DOMAIN_PATH="/home/$DOMAIN_OWNER/domains/$DOMAIN"
     GIT_PATH="/home/$DOMAIN_OWNER/repos/$DOMAIN.git"
 
-    # From options.conf, nginx = 1, apache = 2
-    if [ $WEBSERVER -eq 1 ]; then
-        DOMAIN_CONFIG_PATH="/etc/nginx/sites-available/$DOMAIN"
-        DOMAIN_ENABLED_PATH="/etc/nginx/sites-enabled/$DOMAIN"
-    else
-        DOMAIN_CONFIG_PATH="/etc/apache2/sites-available/$DOMAIN"
-        DOMAIN_ENABLED_PATH="/etc/apache2/sites-enabled/$DOMAIN"
-    fi
+    DOMAIN_CONFIG_PATH="/etc/nginx/sites-available/$DOMAIN"
+    DOMAIN_ENABLED_PATH="/etc/nginx/sites-enabled/$DOMAIN"
 
     # Awstats command to be placed in logrotate file
     if [ $AWSTATS_ENABLE = 'yes' ]; then
@@ -70,12 +53,7 @@ function initialize_variables {
 
 function reload_webserver {
 
-    # From options.conf, nginx = 1, apache = 2
-    if [ $WEBSERVER -eq 1 ]; then
-        service nginx reload
-    else
-        apache2ctl graceful
-    fi
+    service nginx reload
 
 } # End function reload_webserver
 
@@ -93,13 +71,8 @@ function php_fpm_add_user {
         sed -i 's/^group = www-data$/group = '${DOMAIN_OWNER}'/' /etc/php5/fpm/pool.d/$DOMAIN_OWNER.conf
         sed -i 's/^;listen.mode =.*/listen.mode = 0660/' /etc/php5/fpm/pool.d/$DOMAIN_OWNER.conf
 
-       if [ $USE_NGINX_ORG_REPO = "yes" ]; then
-            sed -i 's/^;listen.owner =.*/listen.owner = nginx/' /etc/php5/fpm/pool.d/$DOMAIN_OWNER.conf
-            sed -i 's/^;listen.group =.*/listen.group = nginx/' /etc/php5/fpm/pool.d/$DOMAIN_OWNER.conf
-        else
-            sed -i 's/^;listen.owner =.*/listen.owner = www-data/' /etc/php5/fpm/pool.d/$DOMAIN_OWNER.conf
-            sed -i 's/^;listen.group =.*/listen.group = www-data/' /etc/php5/fpm/pool.d/$DOMAIN_OWNER.conf
-        fi
+        sed -i 's/^;listen.owner =.*/listen.owner = nginx/' /etc/php5/fpm/pool.d/$DOMAIN_OWNER.conf
+        sed -i 's/^;listen.group =.*/listen.group = nginx/' /etc/php5/fpm/pool.d/$DOMAIN_OWNER.conf
     fi
 
     service php5-fpm restart
@@ -110,19 +83,21 @@ function php_fpm_add_user {
 function add_domain {
 
     # Create public_html and log directories for domain
-    mkdir -p $DOMAIN_PATH/{logs,public_html}
+    mkdir -p $DOMAIN_PATH/{logs,public_html/web,tmp}
     touch $DOMAIN_PATH/logs/{access.log,error.log}
 
-    cat > $DOMAIN_PATH/public_html/index.html <<EOF
-<html>
-<head>
-<title>Welcome to $DOMAIN</title>
-</head>
-<body>
-<h1>Welcome to $DOMAIN</h1>
-<p>This page is simply a placeholder for your domain. Place your content in the appropriate directory to see it here. </p>
-<p>Please replace or delete index.html when uploading or creating your site.</p>
-</body>
+    cat > $DOMAIN_PATH/public_html/web/index.html <<EOF
+<!doctype html>
+  <head>
+    <meta charset="utf-8">
+    <title>$DOMAIN - Website under construction</title>
+  </head>
+  <body>
+       <b>It works!</b><br />
+       <br />
+       This is the server's temporary default web page.<br />
+       The web server software is running but no content has been added yet.
+  </body>
 </html>
 EOF
 
@@ -145,16 +120,13 @@ EOF
     chmod 711 $DOMAIN_PATH
 
     # Virtualhost entry
-    # From options.conf, nginx = 1, apache = 2
-    if [ $WEBSERVER -eq 1 ]; then
-        # Nginx webserver. Use Nginx vHost config
-        cat > $DOMAIN_CONFIG_PATH <<EOF
+    cat > $DOMAIN_CONFIG_PATH <<EOF
 server {
         listen 80;
         #listen [::]:80 default ipv6only=on;
 
         server_name www.$DOMAIN $DOMAIN;
-        root $DOMAIN_PATH/public_html;
+        root $DOMAIN_PATH/public_html/web;
         access_log $DOMAIN_PATH/logs/access.log;
         error_log $DOMAIN_PATH/logs/error.log;
 
@@ -203,7 +175,7 @@ server {
 server {
         listen 443;
         server_name www.$DOMAIN $DOMAIN;
-        root $DOMAIN_PATH/public_html;
+        root $DOMAIN_PATH/public_html/web;
         access_log $DOMAIN_PATH/logs/access.log;
         error_log $DOMAIN_PATH/logs/error.log;
 
@@ -257,52 +229,6 @@ server {
         location = /robots.txt  { log_not_found off; access_log off; }
 }
 EOF
-    else # Use Apache vHost config
-        cat > $DOMAIN_CONFIG_PATH <<EOF
-<VirtualHost *:80>
-
-    ServerName $DOMAIN
-    ServerAlias www.$DOMAIN
-    ServerAdmin admin@$DOMAIN
-    DocumentRoot $DOMAIN_PATH/public_html/
-    ErrorLog $DOMAIN_PATH/logs/error.log
-    CustomLog $DOMAIN_PATH/logs/access.log combined
-
-    FastCGIExternalServer $DOMAIN_PATH/php5-fpm -pass-header Authorization -idle-timeout 120 -socket /var/run/php5-fpm-$DOMAIN_OWNER.sock
-    Alias /php5-fcgi $DOMAIN_PATH
-
-</VirtualHost>
-
-
-<IfModule mod_ssl.c>
-<VirtualHost *:443>
-
-    ServerName $DOMAIN
-    ServerAlias www.$DOMAIN
-    ServerAdmin admin@$DOMAIN
-    DocumentRoot $DOMAIN_PATH/public_html/
-    ErrorLog $DOMAIN_PATH/logs/error.log
-    CustomLog $DOMAIN_PATH/logs/access.log combined
-
-    # With PHP5-FPM, you need to create another PHP5-FPM pool for SSL connections
-    # Adding the same fastcgiexternalserver line here will result in an error
-    Alias /php5-fcgi $DOMAIN_PATH
-
-    SSLEngine on
-    SSLCertificateFile    /etc/ssl/localcerts/webserver.pem
-    SSLCertificateKeyFile /etc/ssl/localcerts/webserver.key
-
-    <FilesMatch "\.(cgi|shtml|phtml|php)$">
-        SSLOptions +StdEnvVars
-    </FilesMatch>
-
-    BrowserMatch "MSIE [2-6]" nokeepalive ssl-unclean-shutdown downgrade-1.0 force-response-1.0
-    BrowserMatch "MSIE [17-9]" ssl-unclean-shutdown
-
-</VirtualHost>
-</IfModule>
-EOF
-    fi # End if $WEBSERVER -eq 1
 
     if [ $AWSTATS_ENABLE = 'yes' ]; then
         # Configure Awstats for domain
