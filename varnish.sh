@@ -34,11 +34,6 @@ function setup_varnish {
     aptitude update
     aptitude -y install varnish
 
-    # If using Apache, install mod_rpaf to get remote IP of forwarded requests
-    if [ $WEBSERVER -eq 2 ]; then
-        aptitude -y install libapache2-mod-rpaf
-    fi
-
     # Create a backup copy of the original config file. Don't do anything if file exists
     if [ ! -e /etc/default/varnish_original.backup ]; then
         cp /etc/default/{varnish,varnish_original.backup}
@@ -69,35 +64,23 @@ function varnish_on {
 
     # Allow Varnish to start
     sed -i 's/START=no/START=yes/' /etc/default/varnish
-    # From options.conf, nginx = 1, apache = 2
-    if [ $WEBSERVER -eq 1 ]; then
-        # Change Nginx virtualhost ports to 8080
-        echo 'Changing "Listen 80;" to "Listen 8080;" for vhosts in /etc/nginx/sites-available/'
-        # First fix broken "default" vhost listen directive added by Debian package managers
-        sed -i 's/#listen\s*80;/listen 8080;/' /etc/nginx/sites-available/*
-        # Change the rest of the vhost to listen on port 8080
-        sed -i 's/listen\s*80;/listen 8080;/' /etc/nginx/sites-available/*
-        # TuxLite optimized default vhost uses a catch-all (default_server) listen directive.
-        sed -i 's/listen\s*80\s*default_server;/listen 8080 default_server;/' /etc/nginx/sites-available/*
+    
+    # Change Nginx virtualhost ports to 8080
+    echo 'Changing "Listen 80;" to "Listen 8080;" for vhosts in /etc/nginx/sites-available/'
+    # First fix broken "default" vhost listen directive added by Debian package managers
+    sed -i 's/#listen\s*80;/listen 8080;/' /etc/nginx/sites-available/*
+    # Change the rest of the vhost to listen on port 8080
+    sed -i 's/listen\s*80;/listen 8080;/' /etc/nginx/sites-available/*
+    # TuxLite optimized default vhost uses a catch-all (default_server) listen directive.
+    sed -i 's/listen\s*80\s*default_server;/listen 8080 default_server;/' /etc/nginx/sites-available/*
 
-        # Make sure external IP is forwarded to Nginx instead of Varnish's 127.0.0.1 IP.
-        sed -i '/http {/ a\    set_real_ip_from 127.0.0.1\;' /etc/nginx/nginx.conf
-        sed -i '/http {/ a\    real_ip_header X-Forwarded-For\;' /etc/nginx/nginx.conf
+    # Make sure external IP is forwarded to Nginx instead of Varnish's 127.0.0.1 IP.
+    sed -i '/http {/ a\    set_real_ip_from 127.0.0.1\;' /etc/nginx/nginx.conf
+    sed -i '/http {/ a\    real_ip_header X-Forwarded-For\;' /etc/nginx/nginx.conf
 
-        service nginx restart
-        sleep 2
-        service varnish start
-    else
-        # Change Apache virtualhost ports to 8080
-        echo 'Changing port 80 to 8080 for vhosts in /etc/apache2/sites-available/'
-        sed -i 's/:80$/:8080/' /etc/apache2/ports.conf
-        sed -i 's/Listen 80$/Listen 8080/' /etc/apache2/ports.conf
-        sed -i 's/:80>$/:8080>/' /etc/apache2/sites-available/*
-
-        apache2ctl restart
-        sleep 2
-        service varnish start
-    fi
+    service nginx restart
+    sleep 2
+    service varnish start
 
 
 } # End function varnish_on
@@ -108,33 +91,20 @@ function varnish_off {
     # Deny Varnish from starting
     sed -i 's/START=yes/START=no/' /etc/default/varnish
 
-    # From options.conf, nginx = 1, apache = 2
-    if [ $WEBSERVER -eq 1 ]; then
-        # Revert Nginx virtualhost ports to 80
-        echo 'Changing "Listen 8080;" to "Listen 80;" for vhosts in /etc/nginx/sites-available/'
-        sed -i 's/listen\s*8080;/listen 80;/' /etc/nginx/sites-available/*
-        # TuxLite optimized default vhost uses a catch-all (default_server) listen directive.
-        sed -i 's/listen\s*8080\s*default_server;/listen 80 default_server;/' /etc/nginx/sites-available/*
+    # Revert Nginx virtualhost ports to 80
+    echo 'Changing "Listen 8080;" to "Listen 80;" for vhosts in /etc/nginx/sites-available/'
+    sed -i 's/listen\s*8080;/listen 80;/' /etc/nginx/sites-available/*
+    # TuxLite optimized default vhost uses a catch-all (default_server) listen directive.
+    sed -i 's/listen\s*8080\s*default_server;/listen 80 default_server;/' /etc/nginx/sites-available/*
 
-        # Remove IP forwarding.
-        sed -i '/set_real_ip_from 127.0.0.1\;/ d' /etc/nginx/nginx.conf
-        sed -i '/real_ip_header X-Forwarded-For\;/ d' /etc/nginx/nginx.conf
+    # Remove IP forwarding.
+    sed -i '/set_real_ip_from 127.0.0.1\;/ d' /etc/nginx/nginx.conf
+    sed -i '/real_ip_header X-Forwarded-For\;/ d' /etc/nginx/nginx.conf
 
-        service varnish stop
-        sleep 2
-        service nginx restart
-    else
-        #Revert Apache virtualhost ports to 80
-        echo 'Changing port 8080 to 80 for vhosts in /etc/apache2/sites-available/'
-        sed -i 's/:8080$/:80/' /etc/apache2/ports.conf
-        sed -i 's/Listen 8080/Listen 80/' /etc/apache2/ports.conf
-        sed -i 's/:8080>$/:80>/' /etc/apache2/sites-available/*
-
-        service varnish stop
-        sleep 2
-        apache2ctl restart
-    fi
-
+    service varnish stop
+    sleep 2
+    service nginx restart
+    
 } # End function varnish_off
 
 # Start main program
