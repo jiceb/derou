@@ -40,4 +40,5 @@ sleep 5
 echo ""
 echo "Installation complete!"
 echo "Root login disabled."
-echo "Please add a normal user now using the \"adduser\" command."
+echo "Please add a normal user now using the \"adduser <username>\" command."
+echo "And add that user to sudoers group using the \"usermod -a -G sudo <username>\" command."
