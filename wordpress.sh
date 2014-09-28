@@ -2,7 +2,7 @@
 
 source ./options.conf
 
-FIND_PATH="/home/*/domains/*/public_html/"
+FIND_PATH="/home/*/domains/*/public_html/web/"
 AWK_DOMAIN_POS="5"
 
 # Used variables
@@ -14,6 +14,9 @@ DOMAIN=""
 DOMAIN_OWNER=""
 INSTALL_PATH="${DOMAIN}${WP_FOLDER}"
 DOMAIN_URL=""
+
+DEFAULT_DB_NAME="${DOMAIN//[^[:alnum:]]/}_db"
+DEFAULT_DB_USER="${DOMAIN//[^[:alnum:]]/}_user"
 
 function check_mysql_installed {
 
@@ -182,10 +185,21 @@ function user_input {
     echo ""
     echo "Enter a database name for the wordpress install. E.g domainwp, wordpress, wpdomain"
     DB_NAME=""
-    until  [[ "$DB_NAME" =~ [0-9a-zA-Z]+ ]]; do
-        echo -n "Database name : "
-        read DB_NAME
-    done
+    echo -n "Database name [$DEFAULT_DB_NAME]: "
+    read DB_NAME
+    if [ "$DB_NAME" = "" ]; then
+    	DB_NAME="$DEFAULT_DB_NAME"
+	fi
+	
+	# Ask database user for Wordpress
+    echo ""
+    echo "Enter a database user for the wordpress install. E.g domainwp, wordpress, wpdomain"
+    DB_USER=""
+    echo -n "Database user [$DEFAULT_DB_USER]: "
+    read DB_USER
+    if [ "$DB_USER" = "" ]; then
+    	DB_USER="$DEFAULT_DB_USER"
+	fi
 
     # Ask folder name for Wordpress
     echo ""
@@ -197,8 +211,6 @@ function user_input {
     read WP_FOLDER
 
 
-    # Set database user the same as the database name
-    DB_USER=$DB_NAME
     # Get full system path for installation
     INSTALL_PATH="${DOMAIN}${WP_FOLDER}"
 
